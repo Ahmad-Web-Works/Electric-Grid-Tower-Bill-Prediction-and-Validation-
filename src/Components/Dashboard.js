@@ -1,21 +1,29 @@
-import '../StyleSheet/Dashboard.css';
 import { Link } from 'react-router-dom';
-
-
 import React, { useEffect, useState } from "react";
 import { Chart } from "react-google-charts";
 import axios from 'axios';
 import '../ChartCss/barChart.css';
+import '../StyleSheet/Dashboard.css';
+import '../StyleSheet/Logout.css';
 
 const Dashboard = () => {
-
+    const [user, setUser] = useState(null);
     const [columnsName, setColumnsName] = useState('Central 1');
     const [chartOf, setChartOf] = useState('comercialRegionData');
     const [columnsNamesList, setColumnsNamesList] = useState([]);
     const [sortedData, setSortedData] = useState([]);
     const [isSorted, setIsSorted] = useState(false);
     const [formattedData, setFormattedData] = useState([['Year', 'LoadShedding(HRS)', { role: 'style' }]]);
+    const [isDropdownOpen, setDropdownOpen] = useState(false);
 
+    useEffect(() => {
+        // Retrieve user_name from local storage
+        const storedUserName = localStorage.getItem('user_name');
+
+        if (storedUserName) {
+            setUser(storedUserName);
+        }
+    }, []);
 
     const handleSortClick = () => {
         const sortedChartData = [...formattedData]; // Create a copy of the formatted data
@@ -104,15 +112,32 @@ const Dashboard = () => {
         margin: 'auto', // Center the chart horizontally
     };
 
+
+    const handleIconClick = () => {
+        setDropdownOpen(!isDropdownOpen);
+    };
+
+    const handleLogoutClick = () => {
+        // Handle logout logic here
+        console.log('Logout successful');
+    };
+
     return (
         <div>
-            <div id="topbar">
+            <div id="topbar" style={{ marginTop: '-80px' }}>
                 <h3 className="dash-nav">Dashboard</h3>
-                <i className="fas fa-user-circle icon-nav"></i>
-                <h3 className="user-nav">User</h3>
+                {user && <h3 className="user-nav" style={{ marginTop: '0.4vh' }}>{user}</h3>}
+                <div className="custom-dropdown" id="dropdown" onClick={handleIconClick}>
+                    <i className="fas fa-user-circle icon-nav"></i>
+                    {isDropdownOpen && (
+                        <div className="dropdown-content">
+                            <Link to="/signin" onClick={handleLogoutClick}>Logout</Link>
+                        </div>
+                    )}
+                </div>
             </div>
             <div className="sec-1">
-                <div style={{ position: 'fixed', fontFamily: 'Arial, sans-serif' }} className="sidebar">
+                <div style={{ position: 'fixed', fontFamily: 'Arial, sans-serif', marginTop: '-16px' }} className="sidebar">
                     <nav>
                         <ul className="list-group">
                             <li style={{ padding: '0px', borderRadius: '5px', backgroundColor: '#9A0A0F' }}>
@@ -121,7 +146,7 @@ const Dashboard = () => {
                             <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/loadShd">LOAD SHEDDING CALCULATION</Link></li>
                             <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/uploadReport">UPLOAD REPORT</Link></li>
                             <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/reportGen">BILL REPORT GENERATOR</Link></li>
-                            <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/">BILL PREDICTION</Link></li>
+                            <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/billPre">BILL PREDICTION</Link></li>
                         </ul>
                     </nav>
                 </div>

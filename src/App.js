@@ -11,6 +11,8 @@ import Dashboard from '../src/Components/Dashboard';
 import LoadShd from '../src/Components/LoadShd';
 import ReportGen from '../src/Components/ReportGen';
 import UploadReport from '../src/Components/UploadReport';
+import BillPrediction from './Components/BillPrediction';
+
 
 const App = () => {
   return (
@@ -18,11 +20,15 @@ const App = () => {
       <Router>
         <div>
           <Routes>
-            <Route exact path="/" element={<Signin />} />
+            <Route exact path="/signin" element={<Signin />} />
             <Route exact path="/dashboard" element={<Dashboard />} />
             <Route exact path="/loadShd" element={<LoadShd />} />
             <Route exact path="/reportgen" element={<ReportGen />} />
             <Route exact path="/uploadReport" element={<UploadReport />} />
+            <Route exact path="/billPre" element={<BillPrediction />} />
+
+            <Route path="/" element={<Signin />} />
+
           </Routes>
         </div>
       </Router>

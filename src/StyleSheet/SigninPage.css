@@ -1,3 +1,5 @@
+
+
 *{
     margin: 0;
     padding: 0;
@@ -16,7 +18,7 @@
     flex-direction: column;
     /* justify-content: center; */
     align-items: center;
-    padding-top: 90px;
+    margin-top: 40px;
 }
 
 .main img{
@@ -27,7 +29,6 @@
 .loginForm{
     height: 50vh;
     width: 28vw;
-    border: 0.2px solid rgb(255, 255, 255);
     border-radius: 10px;
     background-color: #9A0A0F;
     display: flex;
@@ -40,7 +41,7 @@
     height: 8vh;
     width: 28vw;
     /* border: 1px solid rgb(255, 255, 255); */
-    border-bottom: 0.2px solid white;
+    border: 1px solid rgb(142, 135, 135);
     border-top: none;
     border-radius: 10px;
     border-bottom-left-radius: 0px;
@@ -87,7 +88,7 @@
     flex-direction: row;
 }
 
-.usernameLogo{
+.userLogo{
     height: 32px;
     width: 36px;
     background-color: white;
@@ -96,7 +97,7 @@
     position: relative;
 }
 
-.inputUsername input, .inputPassword input{
+.inUsername input, .inPassword input{
     height: 32px;
     width: 244px;
     margin-bottom: 15px;
@@ -117,6 +118,34 @@
     cursor: pointer;
     font-weight: 400;
 }
+
+.eye-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+}
+
+/* Add this styling to your SigninPage.css file */
+
+.password-input-container {
+  position: relative;
+}
+
+.password-input-container input {
+  width: calc(135%); /* Adjust the width as needed */
+  padding-right: 30px; /* Space for the eye icon */
+}
+
+.password-input-container .eye-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-54%);
+  right: -27%;
+  cursor: pointer;
+}
+
 
 @media (max-width: 425px) {
     .main img{

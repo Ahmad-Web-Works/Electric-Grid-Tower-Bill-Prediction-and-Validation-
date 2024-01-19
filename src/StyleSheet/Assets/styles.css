@@ -4,15 +4,23 @@ body {
   overflow-x: hidden;
 }
 
+/* .outerDiv{
+  padding-top: 4.6%;
+} */
 /* nav */
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   background-color: #9A0A0F;
-  padding: 14px 30px;
+  padding: 19px 30px 17px 30px;
   color: white;
   font-weight: 700;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
 }
 
 /* side menu */
@@ -61,12 +69,11 @@ header {
   border-radius: 4px;
   margin-top: 20px;
   box-sizing: border-box;
-  padding: 20px 0px;
+  padding: 30px 0px 10px 0.5%;
 }
 
 .main-inputs {
   padding-left: 20px;
-  margin: 0px;
 }
 
 .main-inputs label,
@@ -76,7 +83,7 @@ input[type="text"] {
 
 .main-inputs label,
 input[type="date"] {
-  margin: 20px;
+  margin: 20px ;
 }
 
 .inputState {

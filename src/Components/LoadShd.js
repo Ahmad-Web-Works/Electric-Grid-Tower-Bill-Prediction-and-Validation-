@@ -1,18 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import '../StyleSheet/Assets/styles.css';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import '../StyleSheet/Assets/styles.css';
 import '../DataDisplay.css'
+import '../StyleSheet/Logout.css';
+import * as XLSX from 'xlsx';
+import BeatLoader from "react-spinners/BeatLoader";
+
+
 
 // import { Helmet } from 'react-helmet';
 
 
 const LoadShedding = () => {
 
-    const [originalData, setOriginalData] = useState([]);
+    // const [originalData, setOriginalData] = useState([]);
     const [calculatedData, setCalculatedData] = useState([]);
-    const [showOriginal, setShowOriginal] = useState(false);
-    const [showCalculatedBill, setShowCalculatedBill] = useState(false);
+    // const [showOriginal, setShowOriginal] = useState(true);
+    // const [showCalculatedBill, setShowCalculatedBill] = useState(false);
     const [showCalculatedData, setShowCalculatedData] = useState(true);
 
     const [showMainRegion, setShowMainRegion] = useState(false);
@@ -33,22 +38,26 @@ const LoadShedding = () => {
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
 
+    const [isDropdownOpen, setDropdownOpen] = useState(false);
+
+    const [loading, setLoading] = useState(true);
+
     useEffect(() => {
-        fetchOriginalData();
+        // fetchOriginalData();
         fetchCalculatedData();
         fetchMainRegionColumns();
         fetchComRegionColumns();
         fetchMbuColumns();
     }, []);
 
-    const fetchOriginalData = async () => {
+    /*const fetchOriginalData = async () => {
         try {
             const response = await axios.get('http://localhost:3001/api/data');
             setOriginalData(response.data);
         } catch (error) {
             console.error('Error fetching original data:', error);
         }
-    };
+    };*/
 
     const fetchCalculatedData = async () => {
         try {
@@ -102,10 +111,10 @@ const LoadShedding = () => {
 
             setMainRegionData(response.data);
             setShowMainRegion(true);
-            setShowOriginal(false);
+            // setShowOriginal(false);
             setShowComRegion(false);
             setShowMbu(false);
-            setShowCalculatedBill(false);
+            // setShowCalculatedBill(false);
             setShowCalculatedData(false);
         } catch (error) {
             console.error('Error fetching main region data:', error);
@@ -128,10 +137,10 @@ const LoadShedding = () => {
 
             setComRegionData(response.data);
             setShowComRegion(true);
-            setShowOriginal(false);
+            // setShowOriginal(false);
             setShowMainRegion(false);
             setShowMbu(false);
-            setShowCalculatedBill(false);
+            // setShowCalculatedBill(false);
             setShowCalculatedData(false);
         } catch (error) {
             console.error('Error fetching main region data:', error);
@@ -155,9 +164,9 @@ const LoadShedding = () => {
             setMbuData(response.data);
             setShowMbu(true);
             setShowComRegion(false);
-            setShowOriginal(false);
+            // setShowOriginal(false);
             setShowMainRegion(false);
-            setShowCalculatedBill(false);
+            // setShowCalculatedBill(false);
             setShowCalculatedData(false);
         } catch (error) {
             console.error('Error fetching main region data:', error);
@@ -170,42 +179,139 @@ const LoadShedding = () => {
         setSelectedMbuColumn(selectedColumn);
     };
 
-    const handleShowCalculatedBill = () => {
-        setShowOriginal(false);
-        setShowCalculatedData(false);
-        setShowCalculatedBill(true);
-        setShowMainRegion(false);
-        setShowComRegion(false);
-        setShowMbu(false);
+
+    const handleExportCSV = () => {
+        // Extract data from the table based on the currently visible data
+        const data = [];
+        const header = [];
+
+        const table = document.querySelector('.tableData');
+        const thead = table.querySelector('thead');
+        const tbody = table.querySelector('tbody');
+
+        // Extract header data
+        thead.querySelectorAll('th').forEach(th => {
+            header.push(th.textContent);
+        });
+
+        // Extract table rows
+        tbody.querySelectorAll('tr').forEach(row => {
+            const rowData = [];
+            row.querySelectorAll('td').forEach(td => {
+                rowData.push(td.textContent);
+            });
+            data.push(rowData);
+        });
+
+        // Combine header and data
+        const csvData = [header, ...data].map(row => row.join(','));
+
+        // Get the filename from the user
+        const filename = prompt("Enter the filename to save as (including '.csv')", 'export.csv');
+        if (!filename) {
+            // If the user cancels or doesn't provide a filename, exit
+            return;
+        }
+        // Create a data URI
+        const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvData.join('\n'));
+
+        // Create a download link
+        const link = document.createElement('a');
+        link.setAttribute('href', csvContent);
+        link.setAttribute('download', filename);
+
+        // Trigger the download
+        link.click();
     };
 
-    const handleShowOriginalData = () => {
-        setShowOriginal(true);
-        setShowCalculatedData(false);
-        setShowCalculatedBill(false);
-        setShowMainRegion(false);
-        setShowComRegion(false);
-        setShowMbu(false);
+    const handleExportExcel = () => {
+        // Extract data from the table based on the currently visible data
+        const data = [];
+        const header = [];
+
+        const table = document.querySelector('.tableData');
+        const thead = table.querySelector('thead');
+        const tbody = table.querySelector('tbody');
+
+        // Extract header data
+        thead.querySelectorAll('th').forEach(th => {
+            header.push(th.textContent);
+        });
+
+        // Extract table rows
+        tbody.querySelectorAll('tr').forEach(row => {
+            const rowData = [];
+            row.querySelectorAll('td').forEach(td => {
+                rowData.push(td.textContent);
+            });
+            data.push(rowData);
+        });
+
+        // Prompt the user for the filename
+        const filename = prompt("Enter the filename to save as (including '.xlsx')", 'loadSheddingData.xlsx');
+        if (!filename) {
+            // If the user cancels or doesn't provide a filename, exit
+            return;
+        }
+        // Create a worksheet
+        const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
+
+        // Create a workbook
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Sheet 1');
+
+        // Save the workbook with the user-provided filename
+        XLSX.writeFile(wb, filename);
     };
 
-    const handleShowCalculatedData = () => {
-        setShowOriginal(false);
-        setShowCalculatedBill(false);
-        setShowCalculatedData(true);
-        setShowMainRegion(false);
-        setShowComRegion(false);
-        setShowMbu(false);
+    const handleCopyToClipboard = () => {
+        const table = document.querySelector('.tableData');
+        const range = document.createRange();
+        range.selectNode(table);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        document.execCommand('copy');
+        window.getSelection().removeAllRanges();
+        alert('Table data copied to clipboard!');
     };
+
+    const handleIconClick = () => {
+        setDropdownOpen(!isDropdownOpen);
+    };
+
+    const handleLogoutClick = () => {
+        // Handle logout logic here
+        console.log('Logout successful');
+    };
+
+    useEffect(() => {
+        // Simulate data fetching delay
+        const fetchData = async () => {
+            await new Promise(resolve => setTimeout(resolve, 100)); // Simulating a delay of 2 seconds
+            setLoading(false);
+        };
+
+        fetchData();
+    }, []); // Empty dependency array to run the effect only once on mount
 
     return (
-        <div>
+        <div style={{ paddingTop: '4.6%' }}>
 
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous" />
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossOrigin="anonymous" />
 
             <header>
-                <div className="header-path">Dashboard &nbsp; / &nbsp; Load Shedding Calculation</div>
-                <div className="user-info">User</div>
+                <div className="header-path" style={{ fontSize: '18.5px', fontFamily: 'Arial, sans-serif' }}>Dashboard &nbsp; / &nbsp; Load Shedding Calculation</div>
+                <div className="user-nav" style={{ fontSize: '18.5px' }}>User</div>
+                <div className="custom-dropdown" id="dropdown" onClick={handleIconClick}>
+                    <i className="fas fa-user-circle icon-nav"></i>
+                    {isDropdownOpen && (
+                        <div className="dropdown-content" style={{ margin: '20px 67% 20px -40px' }}>
+                            <Link style={{ color: 'white', textDecoration: 'none' }} to="/signin" onClick={handleLogoutClick}>Logout</Link>
+                        </div>
+                    )}
+                </div>
             </header>
+
 
             <div style={{ position: 'fixed', fontFamily: 'Arial, sans-serif' }} className="sidebar">
                 <nav>
@@ -214,7 +320,7 @@ const LoadShedding = () => {
                         <li style={{ padding: '0px', borderRadius: '5px', backgroundColor: '#9A0A0F' }}><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/loadShd">LOAD SHEDDING CALCULATION</Link></li>
                         <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/uploadReport">UPLOAD REPORT</Link></li>
                         <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/reportGen">BILL REPORT GENERATOR</Link></li>
-                        <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/">BILL PREDICTION</Link></li>
+                        <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/billPre">BILL PREDICTION</Link></li>
                         {/* Add more sidebar items here */}
                     </ul>
                 </nav>
@@ -225,10 +331,10 @@ const LoadShedding = () => {
 
                 {/* Form Sections */}
                 <div style={{ marginRight: '60px' }} className="row main-inputs">
-                    <div style={{ display: 'flex' }} className="col-4">
-                        <label style={{ width: '120px', textAlign: 'center' }} className="form-label">Main Region</label>
+                    <div style={{ display: 'flex', paddingLeft: '2.1%' }} className="col-4">
+                        <label style={{ width: '20px' }} className="form-label">Main Region</label>
                         <div className="col-7">
-                            <select className="form-select form-select-sm inputState" value={selectedMainRegionColumn} onChange={(e) => handleColumnChange(e.target.value)}>
+                            <select className="form-select form-select-sm inputState" value={selectedMainRegionColumn} onChange={(e) => handleColumnChange(e.target.value)} style={{ marginLeft: '90%', minWidth: '170.3px' }}>
                                 {mainRegionColumns.map((column, index) => (
                                     <option key={index} value={column}>
                                         {column}
@@ -237,10 +343,10 @@ const LoadShedding = () => {
                             </select>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', paddingLeft: '40px' }} className="col-4">
-                        <label style={{ width: '120px' }} className="form-label">Commercial Region</label>
+                    <div style={{ display: 'flex', paddingLeft: '29px' }} className="col-4">
+                        <label style={{ width: '50px' }} className="form-label">Commercial Region</label>
                         <div className="col-8">
-                            <select className="form-select form-select-sm inputState" value={selectedComRegionColumn} onChange={(e) => handleColumnChange(e.target.value)}>
+                            <select className="form-select form-select-sm inputState" value={selectedComRegionColumn} onChange={(e) => handleColumnChange(e.target.value)} style={{ margin: '26px 0px 0px 60px', width: '170.3px' }}>
                                 {comRegionColumns.map((column, index) => (
                                     <option key={index} value={column}>
                                         {column}
@@ -249,10 +355,10 @@ const LoadShedding = () => {
                             </select>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', paddingLeft: '40px' }} className="col-4">
-                        <label style={{ width: '120px', textAlign: 'center' }} className="form-label">MBU</label>
+                    <div style={{ display: 'flex', paddingLeft: '58px' }} className="col-4">
+                        <label style={{ width: '37px' }} className="form-label">MBU</label>
                         <div className="col-8">
-                            <select className="form-select form-select-sm inputState" value={selectedMbuColumn} onChange={(e) => handleColumnChange(e.target.value)}>
+                            <select className="form-select form-select-sm inputState" value={selectedMbuColumn} onChange={(e) => handleColumnChange(e.target.value)} style={{ width: '170.3px' }}>
                                 {mbuColumns.map((column, index) => (
                                     <option key={index} value={column}>
                                         {column}
@@ -268,7 +374,7 @@ const LoadShedding = () => {
                     <div style={{ display: 'flex' }} className="col-4">
                         <label style={{ width: '120px', textAlign: 'center' }} className="form-label">Site Code</label>
                         <div className="col-7">
-                            <select className="form-select form-select-sm inputState">
+                            <select className="form-select form-select-sm inputState" style={{ minWidth: '170.3px', marginLeft: '21%' }}>
                                 <option selected>Choose...</option>
                                 <option value="1">One</option>
                                 <option value="2">Two</option>
@@ -276,32 +382,31 @@ const LoadShedding = () => {
                             </select>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', paddingLeft: '40px' }} className="col-4">
-                        <label style={{ width: '120px' }} className="form-label">From</label>
+                    <div style={{ display: 'flex', paddingLeft: '30px' }} className="col-4">
+                        <label style={{ width: '15px' }} className="form-label">From</label>
                         <div className="col-8">
-                            <input style={{ marginLeft: '47px', textAlign: 'center' }} type="date" className="form-control form-control-sm" value={fromDate}
+                            <input style={{ marginLeft: '94px', width: '170.3px' }} type="date" className="form-control form-control-sm" value={fromDate}
                                 onChange={(e) => setFromDate(e.target.value)} />
                         </div>
                     </div>
-                    <div style={{ display: 'flex', paddingLeft: '40px' }} className="col-4">
-                        <label style={{ width: '120px', textAlign: 'center' }} className="form-label">To</label>
+                    <div style={{ display: 'flex', paddingLeft: '62px' }} className="col-4">
+                        <label style={{ width: '34px' }} className="form-label">To</label>
                         <div className="col-8">
-                            <input style={{ textAlign: 'center' }} type="date" className="form-control form-control-sm" value={toDate}
+                            <input style={{ width: '170.3px' }} type="date" className="form-control form-control-sm" value={toDate}
                                 onChange={(e) => setToDate(e.target.value)} />
                         </div>
                     </div>
                 </div>
 
                 {/* Calculate LS Button */}
-                <div style={{ textAlign: 'right', padding: '15px 50px 15px 0px' }} classNameName="submit-btn data-controls">
-                <div style={{ display: 'flex' }} className="col-4">
-                        <label style={{ width: '120px', textAlign: 'center' }} className="form-label">Site Code</label>
+                <div style={{ textAlign: 'right', padding: '6px 35px 15px 0px', display: 'flex', justifyContent: 'flex-end' }} className="submit-btn data-controls">
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }} className="col-4">
                         <div className="col-7">
-                            <select className="form-select form-select-sm inputState">
+                            <select className="form-select form-select-sm inputState" style={{ backgroundColor: '#9A0A0F', color: 'white', border: 'none', height: '5vh', width: '11vw' }}>
                                 <option selected>Calculate LS</option>
-                                <option value="1" onClick={ handleShowMainRegion}> Main Region </option>
-                                <option value="2"onClick={ handleShowComRegion}> Comertial Region</option>
-                                <option value="3"onClick={ handleShowMbu}> Main Region</option>
+                                <option value="1" onClick={handleShowMainRegion}> Main Region </option>
+                                <option value="2" onClick={handleShowComRegion}> Comertial Region</option>
+                                <option value="3" onClick={handleShowMbu}> MBU</option>
                             </select>
                         </div>
                     </div>
@@ -314,59 +419,65 @@ const LoadShedding = () => {
             {/* Data Container */}
             <section style={{ marginLeft: '278px', marginRight: '20px' }} className="data-container">
                 <div className="data-controls">
-                    <button>CSV</button>
-                    <button>EXCEL</button>
-                    <button>COPY</button>
+                    <button onClick={handleExportCSV}>CSV</button>
+                    <button onClick={handleExportExcel}>EXCEL</button>
+                    <button onClick={handleCopyToClipboard}>COPY</button>
                 </div>
                 <div className="data-table">
                     {/* Data Table */}
                     <div className="alignTable">
-                        <div className="tableData">
-                            {showComRegion && (
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            {selectedComRegionColumn === 'Comercial Region' ? (
-                                                <>
-                                                    <th>Date</th>
-                                                    {comRegionColumns
-                                                        .filter(column => column !== 'Comercial Region')
-                                                        .map((column, index) => (
-                                                            <th key={index}>{column}</th>
-                                                        ))}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <th>Date</th>
-                                                    <th>{selectedComRegionColumn}</th>
-                                                </>
-                                            )}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {comRegionData.map((row, index) => (
-                                            <tr key={index}>
+
+                        {loading ? (
+                            <div style={{ textAlign: 'center', padding:'13vh 20vw 0 0' }}>
+                                <BeatLoader color="white" />
+                            </div>
+                        ) : (
+                            <div className="tableData" style={{ minWidth: '1050px', marginRight: '-4px' }}>
+                                {showComRegion && (
+                                    <table>
+                                        <thead>
+                                            <tr>
                                                 {selectedComRegionColumn === 'Comercial Region' ? (
                                                     <>
-                                                        <td>{row.Date}</td>
+                                                        <th>Date</th>
                                                         {comRegionColumns
                                                             .filter(column => column !== 'Comercial Region')
                                                             .map((column, index) => (
-                                                                <td key={index}>{row[column]}</td>
+                                                                <th key={index}>{column}</th>
                                                             ))}
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <td>{row.Date}</td>
-                                                        <td>{row[selectedComRegionColumn]}</td>
+                                                        <th>Date</th>
+                                                        <th>{selectedComRegionColumn}</th>
                                                     </>
                                                 )}
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                            {showCalculatedBill && (
+                                        </thead>
+                                        <tbody>
+                                            {comRegionData.map((row, index) => (
+                                                <tr key={index}>
+                                                    {selectedComRegionColumn === 'Comercial Region' ? (
+                                                        <>
+                                                            <td>{row.Date}</td>
+                                                            {comRegionColumns
+                                                                .filter(column => column !== 'Comercial Region')
+                                                                .map((column, index) => (
+                                                                    <td key={index}>{row[column]}</td>
+                                                                ))}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td>{row.Date}</td>
+                                                            <td>{row[selectedComRegionColumn]}</td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                                {/* {showCalculatedBill && (
                                 <table>
                                     <thead>
                                         <tr>
@@ -405,8 +516,8 @@ const LoadShedding = () => {
                                         ))}
                                     </tbody>
                                 </table>
-                            )}
-                            {showOriginal && (
+                            )} */}
+                                {/* {showOriginal && (
                                 <table>
                                     <thead>
                                         <tr>
@@ -451,156 +562,147 @@ const LoadShedding = () => {
                                         ))}
                                     </tbody>
                                 </table>
-                            )}
-                            {showMbu && (
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            {selectedMbuColumn === 'Mbu' ? (
-                                                <>
-                                                    <th>Date</th>
-                                                    {mbuColumns
-                                                        .filter(column => column !== 'Mbu')
-                                                        .map((column, index) => (
-                                                            <th key={index}>{column}</th>
-                                                        ))}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <th>Date</th>
-                                                    <th>{selectedMbuColumn}</th>
-                                                </>
-                                            )}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {mbuData.map((row, index) => (
-                                            <tr key={index}>
+                            )} */}
+                                {showMbu && (
+                                    <table>
+                                        <thead>
+                                            <tr>
                                                 {selectedMbuColumn === 'Mbu' ? (
                                                     <>
-                                                        <td>{row.Date}</td>
+                                                        <th>Date</th>
                                                         {mbuColumns
                                                             .filter(column => column !== 'Mbu')
                                                             .map((column, index) => (
-                                                                <td key={index}>{row[column]}</td>
+                                                                <th key={index}>{column}</th>
                                                             ))}
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <td>{row.Date}</td>
-                                                        <td>{row[selectedMbuColumn]}</td>
+                                                        <th>Date</th>
+                                                        <th>{selectedMbuColumn}</th>
                                                     </>
                                                 )}
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                            {showCalculatedData && (
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Site Code</th>
-                                            <th>Major City</th>
-                                            <th>Prime</th>
-                                            <th>OSV</th>
-                                            <th>Region</th>
-                                            <th>Comm Region</th>
-                                            <th>Commercial with Split</th>
-                                            <th>Zone</th>
-                                            <th>Vendor</th>
-                                            <th>MBU</th>
-                                            <th>SOB</th>
-                                            <th>LV</th>
-                                            <th>GRM</th>
-                                            <th>MF</th>
-                                            <th>Total Load shedding (MINS)</th>
-                                            <th>Total Load Shedding (HRS)</th>
-                                            <th>System On Electricity (HRS)</th>
-                                            <th>Units Consumption</th>
-                                            <th>Electricity Bill</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {calculatedData.map((row, index) => (
-                                            <tr key={index}>
-                                                <td>{row.Date}</td>
-                                                <td>{row['Site Code']}</td>
-                                                <td>{row['Major City']}</td>
-                                                <td>{row.Prime}</td>
-                                                <td>{row.OSV}</td>
-                                                <td>{row.Region}</td>
-                                                <td>{row['Comm Region']}</td>
-                                                <td>{row['Commercial with Split']}</td>
-                                                <td>{row.Zone}</td>
-                                                <td>{row.Vendor}</td>
-                                                <td>{row.MBU}</td>
-                                                <td>{row.SOB}</td>
-                                                <td>{row.LV}</td>
-                                                <td>{row.GRM}</td>
-                                                <td>{row.MF}</td>
-                                                <td>{row['Total Load shedding (MINS)']}</td>
-                                                <td>{row['Total Load Shedding (HRS)']}</td>
-                                                <td>{row['System On Electricity (HRS)']}</td>
-                                                <td>{row['Units Consumption']}</td>
-                                                <td>{row['Electricity Bill']}</td>
+                                        </thead>
+                                        <tbody>
+                                            {mbuData.map((row, index) => (
+                                                <tr key={index}>
+                                                    {selectedMbuColumn === 'Mbu' ? (
+                                                        <>
+                                                            <td>{row.Date}</td>
+                                                            {mbuColumns
+                                                                .filter(column => column !== 'Mbu')
+                                                                .map((column, index) => (
+                                                                    <td key={index}>{row[column]}</td>
+                                                                ))}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td>{row.Date}</td>
+                                                            <td>{row[selectedMbuColumn]}</td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                                {showCalculatedData && (
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Site Code</th>
+                                                <th>Major City</th>
+                                                <th>OSV</th>
+                                                <th>Region</th>
+                                                <th>Comm Region</th>
+                                                <th>Commercial with Split</th>
+                                                <th>Zone</th>
+                                                <th>MBU</th>
+                                                <th>SOB</th>
+                                                <th>LV</th>
+                                                <th>GRM</th>
+                                                <th>MF</th>
+                                                <th>Total Load shedding (MINS)</th>
+                                                <th>Total Load Shedding (HRS)</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                            {showMainRegion && (
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            {selectedMainRegionColumn === 'Main Region' ? (
-                                                <>
-                                                    <th>Date</th>
-                                                    {mainRegionColumns
-                                                        .filter(column => column !== 'Main Region')
-                                                        .map((column, index) => (
-                                                            <th key={index}>{column}</th>
-                                                        ))}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <th>Date</th>
-                                                    <th>{selectedMainRegionColumn}</th>
-                                                </>
-                                            )}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {mainRegionData.map((row, index) => (
-                                            <tr key={index}>
+                                        </thead>
+                                        <tbody>
+                                            {calculatedData.map((row, index) => (
+                                                <tr key={index}>
+                                                    <td>{row.Date}</td>
+                                                    <td>{row['Site Code']}</td>
+                                                    <td>{row['Major City']}</td>
+                                                    <td>{row.OSV}</td>
+                                                    <td>{row.Region}</td>
+                                                    <td>{row['Comm Region']}</td>
+                                                    <td>{row['Commercial with Split']}</td>
+                                                    <td>{row.Zone}</td>
+                                                    <td>{row.MBU}</td>
+                                                    <td>{row.SOB}</td>
+                                                    <td>{row.LV}</td>
+                                                    <td>{row.GRM}</td>
+                                                    <td>{row.MF}</td>
+                                                    <td>{row['Total Load shedding (MINS)']}</td>
+                                                    <td>{row['Total Load Shedding (HRS)']}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                                {showMainRegion && (
+                                    <table>
+                                        <thead>
+                                            <tr>
                                                 {selectedMainRegionColumn === 'Main Region' ? (
                                                     <>
-                                                        <td>{row.Date}</td>
+                                                        <th>Date</th>
                                                         {mainRegionColumns
                                                             .filter(column => column !== 'Main Region')
                                                             .map((column, index) => (
-                                                                <td key={index}>{row[column]}</td>
+                                                                <th key={index}>{column}</th>
                                                             ))}
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <td>{row.Date}</td>
-                                                        <td>{row[selectedMainRegionColumn]}</td>
+                                                        <th>Date</th>
+                                                        <th>{selectedMainRegionColumn}</th>
                                                     </>
                                                 )}
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
+                                        </thead>
+                                        <tbody>
+                                            {mainRegionData.map((row, index) => (
+                                                <tr key={index}>
+                                                    {selectedMainRegionColumn === 'Main Region' ? (
+                                                        <>
+                                                            <td>{row.Date}</td>
+                                                            {mainRegionColumns
+                                                                .filter(column => column !== 'Main Region')
+                                                                .map((column, index) => (
+                                                                    <td key={index}>{row[column]}</td>
+                                                                ))}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td>{row.Date}</td>
+                                                            <td>{row[selectedMainRegionColumn]}</td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                 </div>
             </section>
 
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossOrigin="anonymous"></script>
 
         </div>
     );

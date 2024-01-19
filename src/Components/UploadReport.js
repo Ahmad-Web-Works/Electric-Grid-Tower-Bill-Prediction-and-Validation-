@@ -1,12 +1,15 @@
-import React, { useRef } from 'react';
+import React, { useState, useRef } from "react";
 import '../StyleSheet/Dashboard.css';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
+import '../StyleSheet/Logout.css';
+// import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+// import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 
 const UploadReport = () => {
+
+  const [isDropdownOpen, setDropdownOpen] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -36,24 +39,40 @@ const UploadReport = () => {
     }
   };
 
+  const handleIconClick = () => {
+    setDropdownOpen(!isDropdownOpen);
+  };
+
+  const handleLogoutClick = () => {
+    // Handle logout logic here
+    console.log('Logout successful');
+  };
+
 
   return (
     <div>
-      <div id="topbar">
-        <h3 className="dash-nav">Dashboard / Upload Report</h3>
-        <FontAwesomeIcon icon={faUserCircle} className="icon-nav" />
-        <h3 className="user-nav">User</h3>
+      <div id="topbar" style={{ marginTop: '-60px' }}>
+        <h3 className="dash-nav">Dashboard</h3>
+        <h3 className="user-nav" style={{ marginTop: '0.4vh' }}>User</h3>
+        <div className="custom-dropdown" id="dropdown" onClick={handleIconClick}>
+          <i className="fas fa-user-circle icon-nav"></i>
+          {isDropdownOpen && (
+            <div className="dropdown-content" style={{ marginLeft: '85.6vw' }}>
+              <Link to="/signin" onClick={handleLogoutClick}>Logout</Link>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="sec-1">
-        <div style={{ position: 'fixed', fontFamily: 'Arial, sans-serif' }} className="sidebar">
+        <div style={{ position: 'fixed', fontFamily: 'Arial, sans-serif', marginTop: '4px' }} className="sidebar">
           <nav>
             <ul className="list-group">
               <li><Link style={{ paddingLeft: '12px', paddingRight: '13px' }} to="/dashboard">DASHBOARD</Link></li>
               <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/LoadShd">LOAD SHEDDING CALCULATION</Link></li>
               <li style={{ padding: '0px', borderRadius: '5px', backgroundColor: '#9A0A0F' }}><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/uploadReport">UPLOAD REPORT</Link></li>
               <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/reportGen">BILL REPORT GENERATOR</Link></li>
-              <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/">BILL PREDICTION</Link></li>
+              <li><Link style={{ paddingLeft: '12px', paddingRight: '12px' }} to="/billPre">BILL PREDICTION</Link></li>
               {/* Add more sidebar items here */}
             </ul>
           </nav>
@@ -82,7 +101,7 @@ const UploadReport = () => {
                 src="./Images/upload.png"
                 alt="Button"
                 onClick={handleImageClick}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: 'pointer', maxHeight: '130px' }}
               />
             </div>
           </div>

@@ -29,6 +29,41 @@ const pool = mysql.createPool({
     connectionLimit: 100
 });
 
+
+// Login Authentication
+app.use(express.json());
+
+app.post('/api/signin', (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    const query = 'SELECT user_name FROM signin WHERE user_email = ? AND user_password = ?';
+
+    pool.query(query, [email, password], (err, results) => {
+        if (err) {
+            console.error('Database query error:', err);
+            return res.status(500).json({ message: 'Internal server error' });
+        }
+
+        if (results.length === 1) {
+            // User found, authentication successful
+            const user = {
+                user_name: results[0].user_name,
+            };
+
+            res.json({ message: 'Authentication successful', user });
+        } else {
+            // No user found, authentication failed
+            res.status(401).json({ message: 'Invalid email or password' });
+        }
+    });
+});
+
+
+
 // Endpoint to get all sites data
 app.get('/api/data', (req, res) => {
     pool.query('SELECT * FROM lsdata', (err, results) => {
@@ -88,7 +123,7 @@ app.get('/api/calculatedData', (req, res) => {
             // Add the 'Total Load Shedding (HRS)' column in hours
             row['Total Load Shedding (HRS)'] = parseFloat((row['Total Load shedding (MINS)'] / 60).toFixed(2));
 
-            row['System On Electricity (HRS)'] = parseFloat( (24 - (row['Total Load shedding (MINS)'] / 60)).toFixed(2));
+            row['System On Electricity (HRS)'] = parseFloat((24 - (row['Total Load shedding (MINS)'] / 60)).toFixed(2));
 
             row['Units Consumption'] = row['System On Electricity (HRS)'] * 2;
 
@@ -100,6 +135,7 @@ app.get('/api/calculatedData', (req, res) => {
         res.json(processedResults);
     });
 });
+
 
 
 app.get('/api/mainRegionsTableData', (req, res) => {
@@ -125,6 +161,72 @@ app.get('/api/mainRegionsTableData', (req, res) => {
         }
 
         res.json(results);
+    });
+});
+
+app.get('/api/calculatedMainRegionsData', (req, res) => {
+    const { from, to } = req.query;
+    if (!from || !to) {
+        res.status(400).json({ error: 'Both "from" and "to" parameters are required' });
+        return;
+    }
+    let selectQuery = 'SELECT * FROM mainregions';
+
+    if (from && to) {
+        selectQuery += ` WHERE STR_TO_DATE(Date, '%d-%b-%Y') BETWEEN STR_TO_DATE(${pool.escape(from)}, '%Y-%m-%d') 
+                                                        AND STR_TO_DATE(${pool.escape(to)}, '%Y-%m-%d')`;
+    }
+
+    pool.query(selectQuery, (err, results) => {
+        if (err) {
+            console.error('Error executing query:', err);
+            res.status(500).json({ error: 'Internal Server Error' });
+            return;
+        }
+
+        const processedResults = results.map(row => {
+            // Loop through each column (except 'Date') to calculate related fields
+            Object.keys(row).forEach(key => {
+                if (key !== 'Date' && !isNaN(row[key])) {
+                    const onElectricityHRS = parseFloat((24 - row[key]).toFixed(2));
+                    const units = parseFloat((onElectricityHRS * 2).toFixed(2));
+                    const bill = parseFloat((units * 8.5).toFixed(2));
+
+                    row[`${key} On Electricity (HRS)`] = onElectricityHRS;
+                    row[`${key} Units`] = units;
+                    row[`${key} Bill`] = bill;
+                }
+            });
+
+            // Filter and get keys that represent the original columns in the 'mainregions' table
+            const originalColumns = Object.keys(row).filter(key => !key.includes(' On Electricity (HRS)') && !key.includes(' Units') && !key.includes(' Bill'));
+
+            // Calculate Total Load Shedding (HRS) for original columns only
+            const totalLoadShedding = originalColumns
+                .filter(key => !isNaN(row[key]) && typeof row[key] === 'number')
+                .reduce((acc, key) => acc + row[key], 0);
+
+            const mrOnElectricity = Object.keys(row)
+                .filter(key => key.includes(' On Electricity (HRS)'))
+                .reduce((acc, key) => acc + row[key], 0);
+
+            const mrUnitsConsumption = Object.keys(row)
+                .filter(key => key.includes(' Units'))
+                .reduce((acc, key) => acc + row[key], 0);
+
+            const mrBill = Object.keys(row)
+                .filter(key => key.includes(' Bill'))
+                .reduce((acc, key) => acc + row[key], 0);
+
+            row['Total Load Shedding (HRS)'] = parseFloat((totalLoadShedding).toFixed(2));
+            row['System On Electricity (HRS)'] = parseFloat((mrOnElectricity).toFixed(2));
+            row['Units Consumption'] = parseFloat((mrUnitsConsumption).toFixed(2));
+            row['Electricity Bill'] = parseFloat((mrBill).toFixed(2));
+
+            return row;
+        });
+
+        res.json(processedResults);
     });
 });
 
@@ -155,6 +257,8 @@ app.get('/api/mainRegionsTableData/column/:columnName', (req, res) => {
     });
 });
 
+
+
 app.get('/api/comercialRegionsTableData', (req, res) => {
     const { from, to } = req.query;
 
@@ -178,6 +282,73 @@ app.get('/api/comercialRegionsTableData', (req, res) => {
         }
 
         res.json(results);
+    });
+});
+
+
+app.get('/api/calculatedComercialRegionsData', (req, res) => {
+    const { from, to } = req.query;
+    if (!from || !to) {
+        res.status(400).json({ error: 'Both "from" and "to" parameters are required' });
+        return;
+    }
+    let selectQuery = 'SELECT * FROM comercialregiondata';
+
+    if (from && to) {
+        selectQuery += ` WHERE STR_TO_DATE(Date, '%d-%b-%Y') BETWEEN STR_TO_DATE(${pool.escape(from)}, '%Y-%m-%d') 
+                                                        AND STR_TO_DATE(${pool.escape(to)}, '%Y-%m-%d')`;
+    }
+
+    pool.query(selectQuery, (err, results) => {
+        if (err) {
+            console.error('Error executing query:', err);
+            res.status(500).json({ error: 'Internal Server Error' });
+            return;
+        }
+
+        const processedResults = results.map(row => {
+            // Loop through each column (except 'Date') to calculate related fields
+            Object.keys(row).forEach(key => {
+                if (key !== 'Date' && !isNaN(row[key])) {
+                    const onElectricityHRS = parseFloat((24 - row[key]).toFixed(2));
+                    const units = parseFloat((onElectricityHRS * 2).toFixed(2));
+                    const bill = parseFloat((units * 8.5).toFixed(2));
+
+                    row[`${key} On Electricity (HRS)`] = onElectricityHRS;
+                    row[`${key} Units`] = units;
+                    row[`${key} Bill`] = bill;
+                }
+            });
+
+            // Filter and get keys that represent the original columns in the 'mainregions' table
+            const originalColumns = Object.keys(row).filter(key => !key.includes(' On Electricity (HRS)') && !key.includes(' Units') && !key.includes(' Bill'));
+
+            // Calculate Total Load Shedding (HRS) for original columns only
+            const totalLoadShedding = originalColumns
+                .filter(key => !isNaN(row[key]) && typeof row[key] === 'number')
+                .reduce((acc, key) => acc + row[key], 0);;
+
+            const mrOnElectricity = Object.keys(row)
+                .filter(key => key.includes(' On Electricity (HRS)'))
+                .reduce((acc, key) => acc + row[key], 0);
+
+            const mrUnitsConsumption = Object.keys(row)
+                .filter(key => key.includes(' Units'))
+                .reduce((acc, key) => acc + row[key], 0);
+
+            const mrBill = Object.keys(row)
+                .filter(key => key.includes(' Bill'))
+                .reduce((acc, key) => acc + row[key], 0);
+
+            row['Total Load Shedding (HRS)'] = parseFloat((totalLoadShedding).toFixed(2));
+            row['System On Electricity (HRS)'] = parseFloat((mrOnElectricity).toFixed(2));
+            row['Units Consumption'] = parseFloat((mrUnitsConsumption).toFixed(2));
+            row['Electricity Bill'] = parseFloat((mrBill).toFixed(2));
+
+            return row;
+        });
+
+        res.json(processedResults);
     });
 });
 
@@ -208,6 +379,7 @@ app.get('/api/comercialRegionsTableData/column/:columnName', (req, res) => {
     });
 });
 
+
 app.get('/api/mbusTableData', (req, res) => {
     const { from, to } = req.query;
 
@@ -231,6 +403,72 @@ app.get('/api/mbusTableData', (req, res) => {
         }
 
         res.json(results);
+    });
+});
+
+app.get('/api/calculatedMbusData', (req, res) => {
+    const { from, to } = req.query;
+    if (!from || !to) {
+        res.status(400).json({ error: 'Both "from" and "to" parameters are required' });
+        return;
+    }
+    let selectQuery = 'SELECT * FROM mbudata';
+
+    if (from && to) {
+        selectQuery += ` WHERE STR_TO_DATE(Date, '%d-%b-%Y') BETWEEN STR_TO_DATE(${pool.escape(from)}, '%Y-%m-%d') 
+                                                        AND STR_TO_DATE(${pool.escape(to)}, '%Y-%m-%d')`;
+    }
+
+    pool.query(selectQuery, (err, results) => {
+        if (err) {
+            console.error('Error executing query:', err);
+            res.status(500).json({ error: 'Internal Server Error' });
+            return;
+        }
+
+        const processedResults = results.map(row => {
+            // Loop through each column (except 'Date') to calculate related fields
+            Object.keys(row).forEach(key => {
+                if (key !== 'Date' && !isNaN(row[key])) {
+                    const onElectricityHRS = parseFloat((24 - row[key]).toFixed(2));
+                    const units = parseFloat((onElectricityHRS * 2).toFixed(2));
+                    const bill = parseFloat((units * 8.5).toFixed(2));
+
+                    row[`${key} On Electricity (HRS)`] = onElectricityHRS;
+                    row[`${key} Units`] = units;
+                    row[`${key} Bill`] = bill;
+                }
+            });
+
+            // Filter and get keys that represent the original columns in the 'mainregions' table
+            const originalColumns = Object.keys(row).filter(key => !key.includes(' Bill'));
+
+            // Calculate Total Load Shedding (HRS) for original columns only
+            const totalLoadShedding = originalColumns
+                .filter(key => !isNaN(row[key]) && typeof row[key] === 'number')
+                .reduce((acc, key) => acc + row[key], 0);
+
+            const mrOnElectricity = Object.keys(row)
+                .filter(key => key.includes(' On Electricity (HRS)'))
+                .reduce((acc, key) => acc + row[key], 0);
+
+            const mrUnitsConsumption = Object.keys(row)
+                .filter(key => key.includes(' Units'))
+                .reduce((acc, key) => acc + row[key], 0);
+
+            const mrBill = Object.keys(row)
+                .filter(key => key.includes(' Bill'))
+                .reduce((acc, key) => acc + row[key], 0);
+
+            row['Total Load Shedding (HRS)'] = parseFloat((totalLoadShedding).toFixed(2));
+            row['System On Electricity (HRS)'] = parseFloat((mrOnElectricity).toFixed(2));
+            row['Units Consumption'] = parseFloat((mrUnitsConsumption).toFixed(2));
+            row['Electricity Bill'] = parseFloat((mrBill).toFixed(2));
+
+            return row;
+        });
+
+        res.json(processedResults);
     });
 });
 
